@@ -1,0 +1,21 @@
+skefor_config:
+  base_url: "http://localhost:8001/v1"
+  api_key: "EMPTY"
+  model_name: "skefor"
+  m: "3"
+
+skeeva_config:
+  base_url: "http://localhost:8002/v1"
+  api_key: "EMPTY"
+  model_name: "skeeva"
+
+llm_call_config:
+  base_url: "https://api.deepseek.com/v1"
+  api_key: "sk-c3488e79b7cd4cd892318f9395294ec8"
+  model_name: "deepseek-chat"
+
+paths:
+  dev_path: "./datasets/bird/dev/dev.json"
+  databases_path: "./datasets/bird/dev/dev_databases/dev_databases"
+  tables_path: "./datasets/bird/dev/dev_tables.json"
+  output_path: "./outputs/pre_sql.json"
