@@ -1,0 +1,7 @@
+vllm
+llama_index
+sqlalchemy
+sqlglot
+aiohttp
+asyncio
+modelscope

@@ -1,0 +1,6 @@
+cache/
+datasets/
+models/
+outputs/
+
+**.pyc
