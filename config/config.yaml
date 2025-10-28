@@ -10,9 +10,9 @@ skeeva_config:
   model_name: "skeeva"
 
 llm_call_config:
-  base_url: "https://api.deepseek.com/v1"
-  api_key: "sk-c3488e79b7cd4cd892318f9395294ec8"
-  model_name: "deepseek-chat"
+  base_url: ""
+  api_key: ""
+  model_name: ""
 
 paths:
   dev_path: "./datasets/bird/dev/dev.json"
