@@ -12,15 +12,15 @@ skeeva_config:
 llm_call_config:
   base_url: "https://api.deepseek.com"
   api_keys: 
-    - "sk-"
-    - "sk-"
-    - "sk-"
-    - "sk-"
-    - "sk-"
-    - "sk-"
-    - "sk-"
-    - "sk-"
-    - "sk-"
+    - "sk-9f523205cd3142568a90c91ade7af12c"
+    - "sk-807f4fe018314952ae737d13df461e86"
+    - "sk-edc82560140643f3a006186bdce99307"
+    - "sk-78dc628b63cb4accad658efbc6b30d78"
+    - "sk-996dd42176844ed7b41bd9e8661fa97a"
+    - "sk-59ee825f856b4c579b060ca228f9c7fb"
+    - "sk-5d1a5bf54ccf42e681dcb2243d6eace8"
+    - "sk-2a01ab11205c40dca6ac1e4424415022"
+    - "sk-67dece433fb2409b97385acd97972b08"
   model_name: "deepseek-chat"
 
 execution_config:
