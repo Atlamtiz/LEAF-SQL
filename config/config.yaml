@@ -10,9 +10,22 @@ skeeva_config:
   model_name: "skeeva"
 
 llm_call_config:
-  base_url: ""
-  api_key: ""
-  model_name: ""
+  base_url: "https://api.deepseek.com"
+  api_keys: 
+    - "sk-"
+    - "sk-"
+    - "sk-"
+    - "sk-"
+    - "sk-"
+    - "sk-"
+    - "sk-"
+    - "sk-"
+    - "sk-"
+  model_name: "deepseek-chat"
+
+execution_config:
+  concurrency_limit: 50
+  max_examples: -1
 
 paths:
   dev_path: "./datasets/bird/dev/dev.json"

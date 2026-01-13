@@ -20,7 +20,6 @@ For a quick demonstration of the LEAF-SQL method, you can run the example script
 python example.py
 ```
 
-
 ## 🏁 Standard Usage
 
 Follow these steps for the complete setup and execution.
@@ -28,6 +27,7 @@ Follow these steps for the complete setup and execution.
 ### Step 1: Install Dependencies
 
 Install all the required packages from `requirements.txt`.
+
 ```base
 pip install -r requirements.txt
 ```
@@ -35,6 +35,7 @@ pip install -r requirements.txt
 ### Step 2: Download Models and Dataset
 
 Download the necessary models from ModelScope.
+
 ```base
 # Download the SkeEva model
 modelscope download --model mrtanzhao/SkeEva --local_dir ./models/skeeva
@@ -49,44 +50,50 @@ Download the BIRD dataset from the official website: https://bird-bench.github.i
 
 Modify the configuration file `./config/config.yaml` to match your environment settings (e.g., file paths, api_key).
 
-## Step 4: Launch API Servers
+### Step 4: Launch API Servers
 
 Start the two model services in separate terminal sessions. Adjust the parameters (like CUDA_VISIBLE_DEVICES, tensor-parallel-size, etc.) according to your hardware specifications.
 
+The following example assumes an 8-GPU environment, assigning 4 GPUs to each model for optimal performance.
+
 ```base
-CUDA_VISIBLE_DEVICES=0,1 python -m vllm.entrypoints.openai.api_server \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python -m vllm.entrypoints.openai.api_server \
     --model ./models/skefor \
     --served-model-name skefor \
     --port 8001 \
-    --tensor-parallel-size 2 \
+    --tensor-parallel-size 4 \
     --max-num-seqs 32 \
     --max-num-batched-tokens 1024
 ```
 
 ```base
-CUDA_VISIBLE_DEVICES=2,3 python -m vllm.entrypoints.openai.api_server \
+CUDA_VISIBLE_DEVICES=4,5,6,7 python -m vllm.entrypoints.openai.api_server \
     --model ./models/skeeva \
     --served-model-name skeeva \
     --port 8002 \
-    --tensor-parallel-size 2 \
+    --tensor-parallel-size 4 \
     --max-num-seqs 32 \
     --max-num-batched-tokens 1024
 ```
 
 ### Step 5: Run the Main Program
 
-Once the services are running, execute the main script.
+Once the services are running, execute the main script. You will see a progress bar indicating the processing status of the tasks.
+
 ```base
 python main.py
 ```
 
 ## 🌈 Contact Us
+
 This project welcomes contributions and suggestions 👍.
 
 If you find a bug, encounter a problem, or have a suggestion for LEAF-SQL, please submit an issue or reach out via email(tanzhao325@gmail.com).
 
 ## 📝 Citation
+
 If you find our work useful or inspiring, please consider citing the repository:
+
 ```bibtex
 @misc{leaf-sql-github,
   author       = {Zhao Tan and

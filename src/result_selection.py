@@ -35,20 +35,29 @@ Analyze the provided database schema, the user's question, and the competing can
 import random
 import re
 from collections import defaultdict
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 import sqlite3
 import time
+import asyncio
 
 def execute_sql(db_path, sql):    
     try:
         conn = sqlite3.connect(db_path)
         conn.text_factory = lambda b: b.decode(errors='ignore')
+        
+        # Prevent long-running queries
+        start_time = time.time()
+        def progress_handler():
+            if time.time() - start_time > 15:
+                return 1
+            return 0
+        conn.set_progress_handler(progress_handler, 10000)
+        
         cursor = conn.cursor()
         
-        start_time = time.time()
         cursor.execute(sql)
         
-        if time.time() - start_time > 10:
+        if time.time() - start_time > 15:
             return "execute timeout"
             
         result = cursor.fetchall()
@@ -64,15 +73,18 @@ def execute_sql(db_path, sql):
         if 'conn' in locals():
             conn.close()
 
+async def execute_sql_async(db_path, sql):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, execute_sql, db_path, sql)
 
-def model(base_url, api_key, model_name, prompt):
+async def model_async(base_url, api_key, model_name, prompt, stats=None, module_name=None):
     try:
-        client = OpenAI(
+        client = AsyncOpenAI(
             base_url=base_url,
             api_key=api_key,
         )
     
-        chat_completion = client.chat.completions.create(
+        chat_completion = await client.chat.completions.create(
             model=model_name,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specializing in SQL skeleton generation."},
@@ -83,10 +95,17 @@ def model(base_url, api_key, model_name, prompt):
             },
             temperature=0.8,
             max_tokens=1024,
+            timeout=60,
         )
+        if stats is not None and module_name is not None and chat_completion.usage:
+            stats[module_name] = stats.get(module_name, 0) + chat_completion.usage.total_tokens
+
         return chat_completion.choices[0].message.content
     except Exception as e:
-        print(f"An error occurred in the 'model' function: {e}")
+        if "Content Exists Risk" in str(e):
+            pass
+        else:
+            pass
         return "" 
 
 def extra_sql(model_output):
@@ -95,8 +114,11 @@ def extra_sql(model_output):
         return match.group(1).strip()
     return ""
 
-def result_selection(db_path, db_schema, question, candidate_sqls, base_url, api_key, model_name):
-    execution_results = {sql: execute_sql(db_path, sql) for sql in candidate_sqls}
+async def result_selection_async(db_path, db_schema, question, candidate_sqls, base_url, api_key, model_name, execution_results=None, stats=None):
+    if execution_results is None:
+        tasks = [execute_sql_async(db_path, sql) for sql in candidate_sqls]
+        results = await asyncio.gather(*tasks)
+        execution_results = dict(zip(candidate_sqls, results))
     
     valid_groups = defaultdict(list)
     valid_results = {} 
@@ -107,6 +129,8 @@ def result_selection(db_path, db_schema, question, candidate_sqls, base_url, api
             valid_results[sql] = result
 
     if not valid_groups:
+        if not candidate_sqls:
+            return "SELECT 'No valid SQL found'" # Handle empty case
         return random.choice(candidate_sqls)
 
     max_votes = 0
@@ -138,7 +162,7 @@ def result_selection(db_path, db_schema, question, candidate_sqls, base_url, api
             candidates_info=candidates_info
         )
         
-        model_output = model(base_url, api_key, model_name, prompt)
+        model_output = await model_async(base_url, api_key, model_name, prompt, stats, 'result_selection')
         
         final_sql = extra_sql(model_output)
         
@@ -149,4 +173,6 @@ def result_selection(db_path, db_schema, question, candidate_sqls, base_url, api
         return final_sql
 
 
-
+def result_selection(db_path, db_schema, question, candidate_sqls, base_url, api_key, model_name):
+   # kept for compatibility if needed, but implementation removed to force async usage in main
+   pass

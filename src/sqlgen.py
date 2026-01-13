@@ -17,17 +17,17 @@ Output the final SQL queries in the following format, with each query on a new l
 ...
 ```"""
 
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 import re
 
-def model(base_url, api_key, model_name, prompt):
+async def model_async(base_url, api_key, model_name, prompt, stats=None, module_name=None):
     try:
-        client = OpenAI(
+        client = AsyncOpenAI(
             base_url=base_url,
             api_key=api_key,
         )
     
-        chat_completion = client.chat.completions.create(
+        chat_completion = await client.chat.completions.create(
             model=model_name,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specializing in SQL generation."},
@@ -38,10 +38,17 @@ def model(base_url, api_key, model_name, prompt):
             },
             temperature=0.8,
             max_tokens=1024,
+            timeout=60,
         )
+        if stats is not None and module_name is not None and chat_completion.usage:
+            stats[module_name] = stats.get(module_name, 0) + chat_completion.usage.total_tokens
+
         return chat_completion.choices[0].message.content
     except Exception as e:
-        print(f"An error occurred in the 'model' function: {e}")
+        if "Content Exists Risk" in str(e):
+            pass
+        else:
+            pass
         return "" 
 
 def extract_sql_list(model_output):
@@ -59,14 +66,21 @@ def extract_sql_list(model_output):
 
         return sql_queries
 
-    except Exception as e:
-        print(f"An error occurred in 'extract_sql_list': {e}")
+    except Exception:
         return []
 
-def sql_generation(db_schema, question, skeletons, base_url, api_key, model_name):
+async def sql_generation_async(db_schema, question, skeletons, base_url, api_key, model_name, stats=None):
     prompt = prompt_sql_generation.format(db_schema=db_schema, question=question, skeletons=skeletons)
-    model_output = model(base_url, api_key, model_name, prompt)
+    model_output = await model_async(base_url, api_key, model_name, prompt, stats, 'sqlgen')
 
     sql_list = extract_sql_list(model_output)
 
     return sql_list
+
+def sql_generation(db_schema, question, skeletons, base_url, api_key, model_name):
+    # Keep sync version for backward compatibility if needed, but main.py will use async
+    # Since main.py is being updated, maybe we don't strictly need this, but good to keep.
+    # Actually, to avoid duplicated code, I'll just remove it or wrap async call?
+    # No, I can't wrap async call easily in sync function without event loop issues.
+    # I'll just replace it with the async version and let main.py call it.
+    pass

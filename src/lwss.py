@@ -4,7 +4,7 @@ from src.utils import get_skeleton_depth
 import asyncio
 
 
-async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model_name_skefor, m_skefor, base_url_skeeva, api_key_skeeva, model_name_skeeva):
+async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model_name_skefor, m_skefor, base_url_skeeva, api_key_skeeva, model_name_skeeva, output_queue=None, stats=None):
 
     search_tree = {}
     node_counter = 0
@@ -18,9 +18,9 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
         "level": "Root"
     }
     node_counter += 1
-    print("LWSS process started.")
+    
+    lwss_start_time = asyncio.get_running_loop().time()
 
-    print("\n--- Phase 1: Base ---")
     base_skeletons = await skefor_agent_async(
         question=question,
         db_schema=db_schema,
@@ -29,10 +29,9 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
         phase="Base",
         base_url=base_url_skefor,
         api_key=api_key_skefor,
-        model_name=model_name_skefor
+        model_name=model_name_skefor,
+        stats=stats
     )
-    
-    print(f"Generated {len(base_skeletons)} Base skeletons. Evaluating in parallel...")
     
     eval_tasks = [
         skeeva_agent_async(
@@ -42,7 +41,8 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
             phase="Base",
             base_url=base_url_skeeva,
             api_key=api_key_skeeva,
-            model_name=model_name_skeeva
+            model_name=model_name_skeeva,
+            stats=stats
         )
         for skeleton in base_skeletons
     ]
@@ -63,17 +63,12 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
             search_tree[root_node_id]["children_ids"].append(node_id)
             node_counter += 1
     
-    print(f"Found {len(valid_base_node_ids)} valid Base skeletons.")
-
-    print("\n--- Phase 2: Expanded ---")
     queue = list(valid_base_node_ids)
     expanded_ready_ids = []
 
     while queue:
         current_level_nodes = queue.copy()
         queue.clear()
-        
-        print(f"Processing {len(current_level_nodes)} nodes in parallel...")
         
         generation_tasks = [
             skefor_agent_async(
@@ -84,7 +79,8 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                 phase="Expanded",
                 base_url=base_url_skefor,
                 api_key=api_key_skefor,
-                model_name=model_name_skefor
+                model_name=model_name_skefor,
+                stats=stats
             )
             for node_id in current_level_nodes
         ]
@@ -100,7 +96,6 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
             ]
             
             if not deeper_skeletons:
-                print(f"Node {parent_node_id} has no deeper children. Adding to ready list.")
                 expanded_ready_ids.append(parent_node_id)
                 continue
             
@@ -112,7 +107,8 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                     phase="Expanded",
                     base_url=base_url_skeeva,
                     api_key=api_key_skeeva,
-                    model_name=model_name_skeeva
+                    model_name=model_name_skeeva,
+                    stats=stats
                 )
                 for skeleton in deeper_skeletons
             ]
@@ -135,15 +131,10 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                     node_counter += 1
             
             if not has_valid_child:
-                print(f"Node {parent_node_id} has no valid deeper children. Adding to ready list.")
                 expanded_ready_ids.append(parent_node_id)
 
-    print(f"Found {len(expanded_ready_ids)} nodes ready for Detailed phase.")
-
-    print("\n--- Phase 3: Detailed ---")
     final_detailed_node_ids = []
 
-    print(f"Processing Detailed Phase Step 1 for {len(expanded_ready_ids)} nodes in parallel...")
     step1_generation_tasks = [
         skefor_agent_async(
             question=question,
@@ -153,7 +144,8 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
             phase="detailed_placeholder",
             base_url=base_url_skefor,
             api_key=api_key_skefor,
-            model_name=model_name_skefor
+            model_name=model_name_skefor,
+            stats=stats
         )
         for node_id in expanded_ready_ids
     ]
@@ -165,7 +157,6 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
             step1_eval_data.append((parent_node_id, skeleton))
     
     if step1_eval_data:
-        print(f"Evaluating {len(step1_eval_data)} Step 1 skeletons in parallel...")
         step1_eval_tasks = [
             skeeva_agent_async(
                 db_schema=db_schema,
@@ -174,7 +165,8 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                 phase="detailed_placeholder",
                 base_url=base_url_skeeva,
                 api_key=api_key_skeeva,
-                model_name=model_name_skeeva
+                model_name=model_name_skeeva,
+                stats=stats
             )
             for _, skeleton in step1_eval_data
         ]
@@ -196,10 +188,7 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                 valid_step1_nodes.append(child_id)
                 node_counter += 1
         
-        print(f"Found {len(valid_step1_nodes)} valid Step 1 skeletons.")
-        
         if valid_step1_nodes:
-            print(f"Processing Detailed Phase Step 2 for {len(valid_step1_nodes)} nodes in parallel...")
             step2_generation_tasks = [
                 skefor_agent_async(
                     question=question,
@@ -209,7 +198,8 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                     phase="detailed_join",
                     base_url=base_url_skefor,
                     api_key=api_key_skefor,
-                    model_name=model_name_skefor
+                    model_name=model_name_skefor,
+                    stats=stats
                 )
                 for node_id in valid_step1_nodes
             ]
@@ -221,7 +211,6 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                     step2_eval_data.append((step1_node_id, skeleton))
             
             if step2_eval_data:
-                print(f"Evaluating {len(step2_eval_data)} Step 2 skeletons in parallel...")
                 step2_eval_tasks = [
                     skeeva_agent_async(
                         db_schema=db_schema,
@@ -230,12 +219,15 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                         phase="detailed_join",
                         base_url=base_url_skeeva,
                         api_key=api_key_skeeva,
-                        model_name=model_name_skeeva
+                        model_name=model_name_skeeva,
+                        stats=stats
                     )
                     for _, skeleton in step2_eval_data
                 ]
                 step2_eval_results = await asyncio.gather(*step2_eval_tasks)
                 
+                pushed_skeletons = set()
+
                 for (step1_node_id, skeleton), is_valid in zip(step2_eval_data, step2_eval_results):
                     if is_valid == "True":
                         child_id = node_counter
@@ -250,12 +242,16 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
                         step1_node["children_ids"].append(child_id)
                         final_detailed_node_ids.append(child_id)
                         node_counter += 1
+                        
+                        if output_queue and skeleton not in pushed_skeletons:
+                            await output_queue.put(skeleton)
+                            pushed_skeletons.add(skeleton)
 
-    print(f"Found {len(final_detailed_node_ids)} fully detailed skeletons.")
-
-    print("\n--- Final Step: Extracting Leaf Nodes ---")
     candidate_skeletons = []
     
+    if 'pushed_skeletons' not in locals():
+        pushed_skeletons = set()
+
     for node_id, node in search_tree.items():
         if node['level'] == "Root":
             continue
@@ -263,15 +259,12 @@ async def lwss_async(db_schema, question, base_url_skefor, api_key_skefor, model
         if not node["children_ids"]:
             if node["skeleton"] not in candidate_skeletons:
                 candidate_skeletons.append(node["skeleton"])
-                print(f"Adding leaf node {node_id} (Level: {node['level']}) to final set.")
+                
+                if output_queue and node["skeleton"] not in pushed_skeletons:
+                     await output_queue.put(node["skeleton"])
+                     pushed_skeletons.add(node["skeleton"])
 
-    print(f"\nLWSS process finished. Returning {len(candidate_skeletons)} candidate skeletons.")
+    if stats is not None:
+        stats["lwss_time"] = asyncio.get_running_loop().time() - lwss_start_time
+        
     return candidate_skeletons
-
-
-def lwss(db_schema, question, base_url_skefor, api_key_skefor, model_name_skefor, base_url_skeeva, api_key_skeeva, model_name_skeeva):
-    return asyncio.run(lwss_async(
-        db_schema, question, 
-        base_url_skefor, api_key_skefor, model_name_skefor,
-        base_url_skeeva, api_key_skeeva, model_name_skeeva
-    ))

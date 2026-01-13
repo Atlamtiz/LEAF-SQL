@@ -851,7 +851,7 @@ def model(base_url, api_key, model_name, prompt):
         return "" 
 
 
-async def model_async(base_url, api_key, model_name, prompt):
+async def model_async(base_url, api_key, model_name, prompt, stats=None, module_name=None):
     try:
         client = AsyncOpenAI(
             base_url=base_url,
@@ -869,10 +869,12 @@ async def model_async(base_url, api_key, model_name, prompt):
             },
             temperature=0.8,
             max_tokens=1024,
+            timeout=60,
         )
+        if stats is not None and module_name is not None and chat_completion.usage:
+            stats[module_name] = stats.get(module_name, 0) + chat_completion.usage.total_tokens
         return chat_completion.choices[0].message.content
-    except Exception as e:
-        print(f"An error occurred in the 'model_async' function: {e}")
+    except Exception:
         return "" 
 
 
@@ -909,7 +911,6 @@ def skefor_agent(question, db_schema, parent_skeleton, m, phase, base_url, api_k
     elif phase.lower() == "detailed_join": 
         prompt = prompt_detailed_phase_join.format(db_schema=db_schema, question=question, skeleton=parent_skeleton, m=m)
     else:
-        print(f"Unknown phase: {phase}")
         return []
     
     model_output = model(base_url, api_key, model_name, prompt)
@@ -921,26 +922,19 @@ def skefor_agent(question, db_schema, parent_skeleton, m, phase, base_url, api_k
     return skeleton_list
 
 
-async def skefor_agent_async(question, db_schema, parent_skeleton, m, phase, base_url, api_key, model_name):
-    if phase.lower() == "base":
-        prompt = prompt_base_phase.format(db_schema=db_schema, question=question, m=m)
-
-    elif phase.lower() == "expanded":
-        prompt = prompt_expanded_phase.format(db_schema=db_schema, question=question, skeleton=parent_skeleton, m=m)
-
-    elif phase.lower() == "detailed_placeholder":
-        prompt = prompt_detailed_phase_placeholder.format(db_schema=db_schema, question=question, skeleton=parent_skeleton, m=m)
-
-    elif phase.lower() == "detailed_join": 
-        prompt = prompt_detailed_phase_join.format(db_schema=db_schema, question=question, skeleton=parent_skeleton, m=m)
+async def skefor_agent_async(question, db_schema, parent_skeleton, m, phase, base_url, api_key, model_name, stats=None):
+    if phase == "Base":
+        prompt = prompt_base_phase.format(m=m, db_schema=db_schema, question=question)
+    elif phase == "Expanded":
+        prompt = prompt_expanded_phase.format(m=m, db_schema=db_schema, question=question, skeleton=parent_skeleton)
+    elif phase == "detailed_placeholder":
+        prompt = prompt_detailed_phase_placeholder.format(m=m, db_schema=db_schema, question=question, skeleton=parent_skeleton)
+    elif phase == "detailed_join":
+        prompt = prompt_detailed_phase_join.format(m=m, db_schema=db_schema, question=question, skeleton=parent_skeleton)
     else:
-        print(f"Unknown phase: {phase}")
         return []
+
+    model_output = await model_async(base_url, api_key, model_name, prompt, stats, 'skefor')
+    skeletons = extract_sql_skeletons(model_output)
     
-    model_output = await model_async(base_url, api_key, model_name, prompt)
-
-    skeleton_list = extract_sql_skeletons(model_output)
-
-    # skeleton_list = ast_norma(skeleton_list)
-
-    return skeleton_list
+    return skeletons
