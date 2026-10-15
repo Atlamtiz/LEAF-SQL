@@ -10,20 +10,20 @@ from src.result_selection import result_selection
 async def run_example():
     skefor_config = {
         "base_url": "https://api.deepseek.com",
-        "api_key": "sk-f519411c441d41f4bfe95a66054e720f",
+        "api_key": "YOUR_DEEPSEEK_API_KEY",
         "model_name": "deepseek-chat",
         "m": "2"
     }
 
     skeeva_config = {
         "base_url": "https://api.deepseek.com",
-        "api_key": "sk-20b7bcf8d0fd4667949b2ff3a3360b7c",
+        "api_key": "YOUR_DEEPSEEK_API_KEY",
         "model_name": "deepseek-chat"
     }
 
     llm_call_config = {
         "base_url": "https://api.deepseek.com/v1",
-        "api_key": "sk-9e7d3ade1dcc4200a0e515935a956e9c",
+        "api_key": "YOUR_DEEPSEEK_API_KEY",
         "model_name": "deepseek-chat"
     }
 

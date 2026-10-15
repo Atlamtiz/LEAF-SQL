@@ -71,7 +71,11 @@ Download the BIRD dataset from the official website: <https://bird-bench.github.
 
 ### Step 3 · Configure Settings
 
-Modify the configuration file `./config/config.yaml` to match your environment settings (e.g., file paths, `api_key`).
+Copy `./config/config.example.yaml` to `./config/config.yaml` and modify it to match your environment settings (e.g., file paths, `api_key`). `config/config.yaml` is git-ignored, so your API keys stay out of the repository.
+
+```bash
+cp config/config.example.yaml config/config.yaml
+```
 
 ### Step 4 · Launch API Servers
 

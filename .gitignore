@@ -4,3 +4,4 @@ models/
 outputs/
 
 **.pyc
+config/config.yaml
